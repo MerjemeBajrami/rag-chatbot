@@ -72,8 +72,7 @@ Thumbs.db
 # (keep PDFs OUT of Git unless required)
 # ===============================
 
-*.pdf
-*.csv
+
 *.parquet
 
 # ===============================
