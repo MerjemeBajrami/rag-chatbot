@@ -71,7 +71,7 @@ Thumbs.db
 # Data & model artifacts
 # (keep PDFs OUT of Git unless required)
 # ===============================
-data/
+
 *.pdf
 *.csv
 *.parquet
