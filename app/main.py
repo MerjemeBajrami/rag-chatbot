@@ -24,39 +24,62 @@ settings = get_settings()
 
 st.title("🩺 Healthcare & Life Sciences RAG Chatbot")
 st.caption("Grounded Q&A over healthcare governance / compliance / system-design PDFs (HIPAA, GDPR, ISO/IEC).")
+def get_available_documents(data_dir: str = "data") -> List[str]:
+    """
+    Return a sorted list of PDF filenames used for ingestion.
+    Used to populate the document filter dropdown.
+    """
+    if not os.path.isdir(data_dir):
+        return []
+
+    return sorted(
+        f for f in os.listdir(data_dir)
+        if f.lower().endswith(".pdf")
+    )
 
 with st.sidebar:
-    st.subheader("Settings")
-    namespace = st.text_input("Pinecone namespace", value="healthcare")
-    top_k = st.slider("Top-K passages", min_value=2, max_value=12, value=settings.top_k)
+    st.subheader("⚙️ Controls")
 
-    st.markdown("---")
-    st.subheader("Metadata filter (optional)")
-    st.write("Filter retrieval to a specific document name (exact match).")
-    doc_filter = st.text_input("Document name (e.g., ISO_27001.pdf)", value="").strip()
+    with st.expander("Retrieval settings", expanded=True):
+        namespace = st.text_input("Pinecone namespace", value="healthcare")
+        top_k = st.slider("Top-K passages", min_value=2, max_value=12, value=settings.top_k)
 
-    st.markdown("---")
-    st.subheader("Memory")
-    mem_turns = st.slider("Keep last N turns", min_value=2, max_value=12, value=6)
-    
-    st.markdown("---")
-    st.subheader("Conversation")
+    with st.expander("Document filter"):
+        st.caption("Restrict retrieval to a single document (exact filename match).")
 
-    if st.button("🧹 Clear conversation", use_container_width=True):
-        st.session_state.history = []
-        st.rerun()
+        documents = get_available_documents()
+        options = ["All documents"] + documents
+
+        selected_doc = st.selectbox(
+            "Select a document",
+            options=options,
+            index=0,
+        )
+
+        doc_filter = ""
+        if selected_doc != "All documents":
+            doc_filter = selected_doc
 
 
-    st.markdown("---")
-    st.subheader("Status")
-    st.write(f"Model: `{settings.chat_model}`")
-    st.write(f"Embeddings: `{settings.embed_model}`")
-    st.write(f"Pinecone index: `{settings.pinecone_index_name}`")
+    with st.expander("Conversation", expanded=True):
+        mem_turns = st.slider("Keep last N turns", min_value=2, max_value=12, value=6)
 
-    if not settings.openai_api_key:
-        st.warning("OPENAI_API_KEY is not set (answers will fail).")
-    if not settings.pinecone_api_key:
-        st.warning("PINECONE_API_KEY is not set (retrieval will fail).")
+        if st.button("🧹 Clear conversation", use_container_width=True):
+            st.session_state.history = []
+            st.rerun()
+
+    with st.expander("System status"):
+        st.code(
+            f"Model: {settings.chat_model}\n"
+            f"Embeddings: {settings.embed_model}\n"
+            f"Pinecone index: {settings.pinecone_index_name}"
+        )
+
+        if not settings.openai_api_key:
+            st.warning("OPENAI_API_KEY is not set (answers will fail).")
+        if not settings.pinecone_api_key:
+            st.warning("PINECONE_API_KEY is not set (retrieval will fail).")
+
 
 
 def get_history() -> List[BaseMessage]:
@@ -77,6 +100,7 @@ def push_history(role: str, content: str) -> None:
     max_msgs = 2 * mem_turns
     if len(hist) > max_msgs:
         st.session_state.history = hist[-max_msgs:]
+
 
 
 # Render existing chat
@@ -125,3 +149,4 @@ if user_q:
             st.warning(f"Guardrail triggered: {result.get('block_reason','')}")
 
     push_history("assistant", result["answer"])
+
